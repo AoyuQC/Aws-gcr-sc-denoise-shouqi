@@ -1,7 +1,7 @@
 from __future__ import print_function
 import tensorflow as tf
 import numpy as np
-from model import SEGAN, SEAE
+from model_local import SEGAN, SEAE
 import os
 from tensorflow.python.client import device_lib
 from scipy.io import wavfile
