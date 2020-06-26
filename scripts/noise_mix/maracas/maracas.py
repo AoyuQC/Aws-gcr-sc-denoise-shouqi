@@ -125,6 +125,10 @@ def add_noise(speech, noise, fs, snr, speech_energy='rms', asl_level=-26.0):
 
     y = y/10**(asl_meter(y, fs)/20) * 10**(asl_level/20)
 
+    noise_scaled = noise
+
+    y = speech + noise_scaled
+
     return y, noise_scaled
 
 

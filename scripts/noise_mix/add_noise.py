@@ -9,6 +9,7 @@ import shutil
 import glob
 from pydub import AudioSegment
 import sys
+from random import shuffle
 
 
 def PostProcess(clean_path, dirName, trainPath, noise_dist, pure_noise_path):
@@ -84,11 +85,14 @@ def main():
     parser.add_argument(
         '--snr', help='signal noise ratio, db', required=True, nargs='+', type=int
     )
+    parser.add_argument(
+        '--level', help='level method for speech', required=True, default='P.56'
+    )
     args = parser.parse_args()
     # Make sure this is reproducible
     np.random.seed(42)
 
-    d = Dataset()
+    d = Dataset(args.level)
     dd = args.dir
 
     ProcessAudio(osp.join(dd, 'clean_trainset_wav_16k_raw'))
@@ -111,7 +115,7 @@ def main():
     # d.add_noise_files(
     #     '/Users/aoyuzhan/Workplace/Datalab/Datalab_3_ShouqiNLP/scripts/noise_clip/119_1_clip_0_0.wav', name='noise119_1')
     # d.add_noise_files(
-    #     '/Users/aoyuzhan/Workplace/Datalab/Datalab_3_ShouqiNLP/scripts/noise_clip/119_26_clip_0_0.wav', name='noise119_26')
+  #     '/Users/aoyuzhan/Workplace/Datalab/Datalab_3_ShouqiNLP/scripts/noise_clip/119_26_clip_0_0.wav', name='noise119_26')
     # d.add_noise_files(
     #     '/Users/aoyuzhan/Workplace/Datalab/Datalab_3_ShouqiNLP/scripts/noise_clip/119_61_clip_0_0.wav', name='noise119_61')
     # d.add_noise_files(
@@ -130,6 +134,12 @@ def main():
     ClearOutputDir(osp.join(dd, 'clean_trainset_wav_16k'))
     ClearOutputDir(osp.join(dd, 'noise_trainset_wav_16k'))
     ClearOutputDir(osp.join(dd, 'pure_noise_trainset_wav_16k'))
+    # prepare dataset for mix application
+    tt_path = ['tr', 'cv', 'tt']
+    ss_path = ['mix', 's1', 's2']
+    for data_type in tt_path:
+        for speaker in ss_path:
+            ClearOutputDir(osp.join(dd, data_type, speaker))
 
     # d.generate_dataset([-3,0,3], osp.join(dd,'noise_trainset_wav_16k_raw'), files_per_condition=5)
     d.generate_dataset(args.snr, osp.join(
@@ -144,6 +154,30 @@ def main():
     pure_noise_path = osp.join(dd, 'pure_noise_trainset_wav_16k')
     PostProcess(clean_path, top_path, train_path, noise_path, pure_noise_path)
 
+    # mix_path = osp.join(dd, 'mix')
+    # s1_path = osp.join(dd, 's1')
+    # s2_path = osp.join(dd, 's2')
+    # shutil.copytree(noise_path, mix_path, dirs_exist_ok=True)
+    # shutil.copytree(train_path, s1_path, dirs_exist_ok=True)
+    # shutil.copytree(pure_noise_path, s2_path, dirs_exist_ok=True)
+    raw_list = os.listdir(noise_path)
+    shuffle(raw_list)
+
+    train_ratio = 0.8
+    val_ratio = 0.1
+
+    train, val, test = np.split(raw_list, [int(train_ratio*len(raw_list)), int((train_ratio+val_ratio)*len(raw_list))])
+
+    dirlist = []
+    dirlist.append(train)
+    dirlist.append(val)
+    dirlist.append(test)
+
+    for idx, ddir in enumerate(dirlist):
+        for ff_name in ddir:
+            shutil.copyfile(osp.join(noise_path,ff_name), osp.join(dd,tt_path[idx],'mix',ff_name))
+            shutil.copyfile(osp.join(train_path,ff_name), osp.join(dd,tt_path[idx],'s1',ff_name))
+            shutil.copyfile(osp.join(pure_noise_path,ff_name), osp.join(dd,tt_path[idx],'s2',ff_name))
 
 if __name__ == '__main__':
     main()
